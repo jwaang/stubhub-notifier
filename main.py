@@ -144,13 +144,14 @@ async def run_loop(cfg: Config) -> None:
             new = store.filter_new_or_changed(filtered)
 
             if new:
-                send_alert(
+                sent = send_alert(
                     new,
                     gmail_address=cfg.gmail_address,
                     gmail_app_password=cfg.gmail_app_password,
                     notification_emails=cfg.notification_emails,
                 )
-                store.mark_alerted(new)
+                if sent:
+                    store.mark_alerted(new)
 
             backoff_level = 0  # successful cycle — reset backoff
 

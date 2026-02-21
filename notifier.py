@@ -26,20 +26,23 @@ def send_alert(
     gmail_address: str,
     gmail_app_password: str,
     notification_emails: list[str],
-) -> None:
+) -> bool:
     """
     Send one consolidated email summarising all new/changed matching listings.
 
-    Non-fatal: logs errors and returns without raising so the bot keeps running.
+    Returns True on success, False on failure.
+    Non-fatal: logs errors and returns False so the bot keeps running.
     """
     if not listings:
-        return
+        return False
 
     try:
         _send(listings, gmail_address, gmail_app_password, notification_emails)
         logger.info("Alert email sent to %s (%d listing(s))", ", ".join(notification_emails), len(listings))
+        return True
     except Exception:
         logger.error("Failed to send alert email", exc_info=True)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -142,8 +145,6 @@ def _send(
     msg.attach(MIMEText(_build_plain(listings, ts), "plain", "utf-8"))
     msg.attach(MIMEText(_build_html(listings, ts), "html", "utf-8"))
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(gmail_address, gmail_app_password)
         smtp.send_message(msg)
