@@ -44,7 +44,7 @@ The bot logs to stdout. Press `Ctrl+C` to stop.
 
 ## Railway deployment
 
-Railway runs the bot 24/7 using the included `Dockerfile`. Chromium is installed at build time — no manual setup needed on the server.
+Railway runs the bot 24/7 using the included `Dockerfile` (`python:3.11-slim-bookworm` base — Debian 12 is required because Playwright's Chromium dependencies aren't compatible with Debian 13/Trixie). Chromium is installed at build time — no manual setup needed on the server.
 
 ### Steps
 
