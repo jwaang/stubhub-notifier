@@ -3,3 +3,4 @@ playwright-stealth==2.0.2
 python-dotenv==1.0.0
 pytz==2025.1
 Pillow==11.0.0
+resend==2.10.0

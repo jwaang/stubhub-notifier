@@ -57,8 +57,8 @@ class Config:
     quiet_hours_start: int   # PT hour, inclusive (0–23)
     quiet_hours_end: int     # PT hour, exclusive (0–23)
     stop_date: datetime.date
-    gmail_address: str
-    gmail_app_password: str
+    resend_api_key: str
+    resend_from_email: str
     notification_emails: list[str]
     db_path: str
     headless: bool
@@ -85,8 +85,8 @@ def _load_config() -> Config:
         stop_date=datetime.date.fromisoformat(
             os.environ.get("STOP_DATE", "2026-05-15")
         ),
-        gmail_address=require("GMAIL_ADDRESS"),
-        gmail_app_password=require("GMAIL_APP_PASSWORD"),
+        resend_api_key=require("RESEND_API_KEY"),
+        resend_from_email=require("RESEND_FROM_EMAIL"),
         notification_emails=[
             e.strip()
             for e in os.environ.get("NOTIFICATION_EMAIL", _DEFAULT_NOTIFICATION_EMAIL).split(",")
@@ -146,8 +146,8 @@ async def run_loop(cfg: Config) -> None:
             if new:
                 sent = send_alert(
                     new,
-                    gmail_address=cfg.gmail_address,
-                    gmail_app_password=cfg.gmail_app_password,
+                    resend_api_key=cfg.resend_api_key,
+                    from_email=cfg.resend_from_email,
                     notification_emails=cfg.notification_emails,
                 )
                 if sent:
@@ -210,8 +210,8 @@ def main() -> None:
     logger.info("  CHECK_INTERVAL_MINUTES:  %d", cfg.check_interval_minutes)
     logger.info("  QUIET_HOURS:             %02d:00\u2013%02d:00 PT", cfg.quiet_hours_start, cfg.quiet_hours_end)
     logger.info("  STOP_DATE:               %s", cfg.stop_date)
-    logger.info("  GMAIL_ADDRESS:           %s", cfg.gmail_address)
-    logger.info("  GMAIL_APP_PASSWORD:      %s", "***" + cfg.gmail_app_password[-4:])
+    logger.info("  RESEND_FROM_EMAIL:       %s", cfg.resend_from_email)
+    logger.info("  RESEND_API_KEY:          %s", "***" + cfg.resend_api_key[-4:])
     logger.info("  NOTIFICATION_EMAIL:      %s", ", ".join(cfg.notification_emails))
     logger.info("  DB_PATH:                 %s", cfg.db_path)
     logger.info("  HEADLESS:                %s", cfg.headless)

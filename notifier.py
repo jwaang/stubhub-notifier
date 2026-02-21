@@ -1,30 +1,29 @@
 """
 Email notifier for the StubHub EDC shuttle ticket monitor.
 
-Sends a single consolidated HTML email (with plain-text fallback and optional
-screenshot attachment) whenever new matching listings are found.
+Sends a single consolidated HTML email (with plain-text fallback) whenever
+new matching listings are found. Uses the Resend API for delivery.
 """
 
 import logging
-import smtplib
 from datetime import datetime, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 import pytz
+import resend
 
 from scraper import Listing
 
 logger = logging.getLogger(__name__)
 
 _PT = pytz.timezone("America/Los_Angeles")
+_FEE_PER_TICKET = 159  # StubHub buyer fee per ticket for these shuttle listings
 
 
 def send_alert(
     listings: list[Listing],
     *,
-    gmail_address: str,
-    gmail_app_password: str,
+    resend_api_key: str,
+    from_email: str,
     notification_emails: list[str],
 ) -> bool:
     """
@@ -37,7 +36,7 @@ def send_alert(
         return False
 
     try:
-        _send(listings, gmail_address, gmail_app_password, notification_emails)
+        _send(listings, resend_api_key, from_email, notification_emails)
         logger.info("Alert email sent to %s (%d listing(s))", ", ".join(notification_emails), len(listings))
         return True
     except Exception:
@@ -48,9 +47,6 @@ def send_alert(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-_FEE_PER_TICKET = 159  # StubHub buyer fee per ticket for these shuttle listings
-
 
 def _build_timestamp() -> str:
     return datetime.now(timezone.utc).astimezone(_PT).strftime("%Y-%m-%d %I:%M %p PT")
@@ -132,19 +128,16 @@ def _build_plain(listings: list[Listing], ts: str) -> str:
 
 def _send(
     listings: list[Listing],
-    gmail_address: str,
-    gmail_app_password: str,
+    resend_api_key: str,
+    from_email: str,
     notification_emails: list[str],
 ) -> None:
     ts = _build_timestamp()
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = _build_subject(len(listings))
-    msg["From"] = gmail_address
-    msg["To"] = ", ".join(notification_emails)
-    msg.attach(MIMEText(_build_plain(listings, ts), "plain", "utf-8"))
-    msg.attach(MIMEText(_build_html(listings, ts), "html", "utf-8"))
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(gmail_address, gmail_app_password)
-        smtp.send_message(msg)
+    resend.api_key = resend_api_key
+    resend.Emails.send({
+        "from": from_email,
+        "to": notification_emails,
+        "subject": _build_subject(len(listings)),
+        "html": _build_html(listings, ts),
+        "text": _build_plain(listings, ts),
+    })
