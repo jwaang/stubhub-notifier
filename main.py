@@ -37,11 +37,18 @@ _DEFAULT_STUBHUB_URL = (
 _DEFAULT_NOTIFICATION_EMAIL = "jonathan.wang1996@gmail.com"
 
 # Backoff sleep ranges (minutes) indexed by failure count (capped at last entry).
-_BACKOFF_RANGES: list[tuple[int, int]] = [
+# Rate-limit errors use longer backoff; transient errors (crashes, timeouts) use shorter.
+_BACKOFF_RANGES_RATELIMIT: list[tuple[int, int]] = [
     (10, 20),   # 1st consecutive failure
     (20, 40),   # 2nd
     (45, 75),   # 3rd
     (90, 150),  # 4th+ (cap)
+]
+_BACKOFF_RANGES_TRANSIENT: list[tuple[int, int]] = [
+    (2, 5),     # 1st consecutive failure
+    (5, 10),    # 2nd
+    (10, 20),   # 3rd
+    (15, 30),   # 4th+ (cap)
 ]
 
 
@@ -117,9 +124,9 @@ def _compute_sleep(cfg: Config) -> tuple[float, bool]:
     return secs, quiet
 
 
-def _backoff_sleep_secs(backoff_level: int) -> float:
-    idx = min(backoff_level - 1, len(_BACKOFF_RANGES) - 1)
-    lo, hi = _BACKOFF_RANGES[idx]
+def _backoff_sleep_secs(backoff_level: int, ranges: list[tuple[int, int]]) -> float:
+    idx = min(backoff_level - 1, len(ranges) - 1)
+    lo, hi = ranges[idx]
     return random.uniform(lo * 60, hi * 60)
 
 
@@ -156,8 +163,8 @@ async def run_loop(cfg: Config) -> None:
             backoff_level = 0  # successful cycle — reset backoff
 
         except RateLimitError as exc:
-            backoff_level = min(backoff_level + 1, len(_BACKOFF_RANGES))
-            wait = _backoff_sleep_secs(backoff_level)
+            backoff_level = min(backoff_level + 1, len(_BACKOFF_RANGES_RATELIMIT))
+            wait = _backoff_sleep_secs(backoff_level, _BACKOFF_RANGES_RATELIMIT)
             logger.warning("Rate limited: %s", exc)
             logger.info(
                 "Backoff level %d — sleeping %.0fs before retry", backoff_level, wait
@@ -166,8 +173,8 @@ async def run_loop(cfg: Config) -> None:
             continue
 
         except Exception as exc:
-            backoff_level = min(backoff_level + 1, len(_BACKOFF_RANGES))
-            wait = _backoff_sleep_secs(backoff_level)
+            backoff_level = min(backoff_level + 1, len(_BACKOFF_RANGES_TRANSIENT))
+            wait = _backoff_sleep_secs(backoff_level, _BACKOFF_RANGES_TRANSIENT)
             logger.warning("Scrape error: %s", exc, exc_info=True)
             logger.info(
                 "Backoff level %d — sleeping %.0fs before retry", backoff_level, wait

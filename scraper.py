@@ -62,7 +62,15 @@ async def scrape_listings(
         Exception: On unexpected page load failures.
     """
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=headless)
+        browser = await pw.chromium.launch(
+            headless=headless,
+            args=[
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--single-process",
+            ],
+        )
         context = await browser.new_context(user_agent=USER_AGENT)
         page = await context.new_page()
         await Stealth().apply_stealth_async(page)
