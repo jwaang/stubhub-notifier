@@ -68,7 +68,6 @@ async def scrape_listings(
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
                 "--no-sandbox",
-                "--single-process",
             ],
         )
         context = await browser.new_context(user_agent=USER_AGENT)
