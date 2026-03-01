@@ -103,10 +103,12 @@ async def scrape_listings(
 
             await _check_for_blocks(page)
 
-            # Wait for the listings container to confirm the page rendered
+            # Wait for the listings container to confirm the page rendered.
+            # Use Locator API (not deprecated wait_for_selector) with state="attached"
+            # to avoid false timeouts from React hydration detach/reattach cycles.
             try:
-                await page.wait_for_selector(
-                    '[data-testid="listings-container"]', timeout=15_000
+                await page.locator('[data-testid="listings-container"]').wait_for(
+                    state="attached", timeout=15_000
                 )
             except Exception:
                 logger.warning("Listings container not found within 15s timeout")
